@@ -1,32 +1,32 @@
-import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
+import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 
 const userSchema = new mongoose.Schema(
   {
     firstName: {
       type: String,
-      required: [true, 'Please add a first name'],
+      required: [true, "Please add a first name"],
       trim: true,
     },
     lastName: {
       type: String,
-      required: [true, 'Please add a last name'],
+      required: [true, "Please add a last name"],
       trim: true,
     },
     email: {
       type: String,
-      required: [true, 'Please add an email'],
+      required: [true, "Please add an email"],
       unique: true,
       lowercase: true,
       trim: true,
       match: [
         /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-        'Please add a valid email',
+        "Please add a valid email",
       ],
     },
     password: {
       type: String,
-      required: [true, 'Please add a password'],
+      required: [true, "Please add a password"],
       minlength: 6,
       select: false,
     },
@@ -58,6 +58,82 @@ const userSchema = new mongoose.Schema(
         },
       ],
     },
+    // Enhanced user profile for AI chatbot
+    profile: {
+      age: {
+        type: Number,
+        min: 18,
+        max: 100,
+      },
+      occupation: {
+        type: String,
+        trim: true,
+      },
+      riskTolerance: {
+        type: String,
+        enum: ["conservative", "moderate", "aggressive"],
+        default: "moderate",
+      },
+      investmentExperience: {
+        type: String,
+        enum: ["beginner", "intermediate", "advanced"],
+        default: "beginner",
+      },
+      financialPriorities: [
+        {
+          type: String,
+          enum: [
+            "emergency_fund",
+            "retirement",
+            "home_purchase",
+            "education",
+            "debt_payoff",
+            "investment",
+            "travel",
+            "other",
+          ],
+        },
+      ],
+      monthlyExpenses: {
+        type: Number,
+        default: 0,
+      },
+      emergencyFund: {
+        type: Number,
+        default: 0,
+      },
+      debtAmount: {
+        type: Number,
+        default: 0,
+      },
+      investmentGoals: [
+        {
+          title: String,
+          targetAmount: Number,
+          timeframe: String, // e.g., "5 years", "10 years"
+          priority: {
+            type: String,
+            enum: ["high", "medium", "low"],
+            default: "medium",
+          },
+        },
+      ],
+    },
+    // AI conversation history for context
+    aiConversationHistory: [
+      {
+        userMessage: String,
+        aiResponse: String,
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+        context: {
+          section: String, // e.g., 'budget', 'goals', 'investment', 'general'
+          sentiment: String, // e.g., 'positive', 'negative', 'neutral'
+        },
+      },
+    ],
   },
   {
     timestamps: true,
@@ -65,8 +141,8 @@ const userSchema = new mongoose.Schema(
 );
 
 // Hash password before saving
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) {
     next();
   }
 
@@ -79,6 +155,6 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model("User", userSchema);
 
 export default User;

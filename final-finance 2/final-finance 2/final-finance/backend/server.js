@@ -1,10 +1,11 @@
-import express from 'express';
-import dotenv from 'dotenv';
-import cors from 'cors';
-import connectDB from './config/db.js';
-import authRoutes from './routes/authRoutes.js';
-import financeRoutes from './routes/financeRoutes.js';
-import { errorHandler, notFound } from './middleware/errorHandler.js';
+import express from "express";
+import dotenv from "dotenv";
+import cors from "cors";
+import connectDB from "./config/db.js";
+import authRoutes from "./routes/authRoutes.js";
+import financeRoutes from "./routes/financeRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+import { errorHandler, notFound } from "./middleware/errorHandler.js";
 
 // Load env vars
 dotenv.config();
@@ -20,12 +21,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.get('/', (req, res) => {
-  res.json({ message: 'Welcome to finGenie API' });
+app.get("/", (req, res) => {
+  res.json({ message: "Welcome to finGenie API" });
 });
 
-app.use('/api/auth', authRoutes);
-app.use('/api/finance', financeRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/finance", financeRoutes);
+app.use("/api/user", userRoutes);
 
 // Error handling
 app.use(notFound);

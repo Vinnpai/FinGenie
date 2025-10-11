@@ -1,21 +1,21 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
 
 // Helper function to handle API responses
 const handleResponse = async (response) => {
   const data = await response.json();
-  
+
   if (!response.ok) {
-    throw new Error(data.message || 'Something went wrong');
+    throw new Error(data.message || "Something went wrong");
   }
-  
+
   return data;
 };
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
-  const user = JSON.parse(localStorage.getItem('user'));
+  const user = JSON.parse(localStorage.getItem("user"));
   return {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...(user?.token && { Authorization: `Bearer ${user.token}` }),
   };
 };
@@ -24,9 +24,9 @@ const getAuthHeaders = () => {
 export const authAPI = {
   register: async (userData) => {
     const response = await fetch(`${API_URL}/auth/register`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(userData),
     });
@@ -35,9 +35,9 @@ export const authAPI = {
 
   login: async (credentials) => {
     const response = await fetch(`${API_URL}/auth/login`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(credentials),
     });
@@ -46,7 +46,7 @@ export const authAPI = {
 
   getProfile: async () => {
     const response = await fetch(`${API_URL}/auth/profile`, {
-      method: 'GET',
+      method: "GET",
       headers: getAuthHeaders(),
     });
     return handleResponse(response);
@@ -54,7 +54,7 @@ export const authAPI = {
 
   updateProfile: async (userData) => {
     const response = await fetch(`${API_URL}/auth/profile`, {
-      method: 'PUT',
+      method: "PUT",
       headers: getAuthHeaders(),
       body: JSON.stringify(userData),
     });
@@ -67,7 +67,7 @@ export const financeAPI = {
   // Goals
   getGoals: async () => {
     const response = await fetch(`${API_URL}/finance/goals`, {
-      method: 'GET',
+      method: "GET",
       headers: getAuthHeaders(),
     });
     return handleResponse(response);
@@ -75,7 +75,7 @@ export const financeAPI = {
 
   addGoal: async (goalData) => {
     const response = await fetch(`${API_URL}/finance/goals`, {
-      method: 'POST',
+      method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(goalData),
     });
@@ -84,7 +84,7 @@ export const financeAPI = {
 
   updateGoal: async (id, goalData) => {
     const response = await fetch(`${API_URL}/finance/goals/${id}`, {
-      method: 'PUT',
+      method: "PUT",
       headers: getAuthHeaders(),
       body: JSON.stringify(goalData),
     });
@@ -93,7 +93,7 @@ export const financeAPI = {
 
   deleteGoal: async (id) => {
     const response = await fetch(`${API_URL}/finance/goals/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: getAuthHeaders(),
     });
     return handleResponse(response);
@@ -102,7 +102,7 @@ export const financeAPI = {
   // Budget
   getBudget: async () => {
     const response = await fetch(`${API_URL}/finance/budget`, {
-      method: 'GET',
+      method: "GET",
       headers: getAuthHeaders(),
     });
     return handleResponse(response);
@@ -110,10 +110,52 @@ export const financeAPI = {
 
   updateBudget: async (budgetData) => {
     const response = await fetch(`${API_URL}/finance/budget`, {
-      method: 'PUT',
+      method: "PUT",
       headers: getAuthHeaders(),
       body: JSON.stringify(budgetData),
     });
+    return handleResponse(response);
+  },
+};
+
+// User Profile API
+export const userAPI = {
+  // Profile management
+  getProfile: async () => {
+    const response = await fetch(`${API_URL}/user/profile`, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  updateProfile: async (profileData) => {
+    const response = await fetch(`${API_URL}/user/profile`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(profileData),
+    });
+    return handleResponse(response);
+  },
+
+  // AI Conversation management
+  addConversation: async (conversationData) => {
+    const response = await fetch(`${API_URL}/user/conversation`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(conversationData),
+    });
+    return handleResponse(response);
+  },
+
+  getConversationHistory: async (limit = 50) => {
+    const response = await fetch(
+      `${API_URL}/user/conversations?limit=${limit}`,
+      {
+        method: "GET",
+        headers: getAuthHeaders(),
+      }
+    );
     return handleResponse(response);
   },
 };
