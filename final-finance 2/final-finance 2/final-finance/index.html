@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>finGenie — AI Financial Planning</title>
+    <meta name="description"
+        content="finGenie is your AI-powered financial planning companion. Forecast cashflow, set goals, and get smart insights to grow your wealth." />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="finGenie — AI Financial Planning" />
+    <meta property="og:description" content="AI-powered financial planning and insights to help you grow wealth." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://fingenie.example" />
+
+    <!-- Favicon -->
+    <link rel="icon"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%237c3aed'/%3E%3Ctext x='50' y='65' text-anchor='middle' font-size='60' fill='white' font-family='Arial,sans-serif' font-weight='bold'%3Ef%3C/text%3E%3C/svg%3E" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            200: '#ddd6fe',
+                            300: '#c4b5fd',
+                            400: '#a78bfa',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            800: '#5b21b6',
+                            900: '#4c1d95'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- AOS CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/aos@2.3.4/dist/aos.css" />
+
+    <style>
+        .parallax-wrap {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .parallax-layer {
+            will-change: transform;
+            transition: transform 180ms ease-out;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .parallax-layer {
+                transition: none !important;
+                transform: none !important;
+            }
+        }
+
+        /* 3D Card Animation Styles */
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+
+        .transform-style-preserve-3d {
+            transform-style: preserve-3d;
+        }
+
+        .backface-hidden {
+            backface-visibility: hidden;
+        }
+
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+
+        .group:hover .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+
+        /* Enhanced glow effects */
+        .group:hover .shadow-2xl {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25),
+                0 0 0 1px rgba(59, 130, 246, 0.1),
+                0 0 20px rgba(59, 130, 246, 0.2);
+        }
+
+        /* Smooth transitions for all interactive elements */
+        .group * {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Custom scrollbar for better UX */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-to-b from-black via-violet-950 to-black text-zinc-100 antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>
