@@ -5,6 +5,7 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import financeRoutes from "./routes/financeRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import expenseRoutes from "./routes/expenseRoutes.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
 
 // Load env vars
@@ -28,6 +29,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/finance", financeRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/expense", expenseRoutes);
 
 // Error handling
 app.use(notFound);
