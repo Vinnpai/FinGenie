@@ -8,6 +8,7 @@ import Lottie from "lottie-react";
 import Login from "./Login";
 import Signup from "./Signup";
 import Dashboard from "./Dashboard";
+import GoalPlanner from "./components/GoalPlanner";
 
 function LandingPage() {
   const [animationData, setAnimationData] = useState(null);
@@ -165,6 +166,12 @@ function LandingPage() {
               className="text-zinc-300 hover:text-white transition-colors"
             >
               Features
+            </a>
+            <a
+              href="/goal-planner"
+              className="text-zinc-300 hover:text-white transition-colors"
+            >
+              Goal Planner
             </a>
             <a
               href="/login"
@@ -558,6 +565,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/goal-planner" element={<GoalPlanner />} />
       </Routes>
     </Router>
   );

@@ -58,12 +58,157 @@ const Chatbot = () => {
 
   // Get personalized AI response based on user data
   const getPersonalizedResponse = async (userInput) => {
+    const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
     const input = userInput.toLowerCase();
-
-    // Create context from user data
     const userContext = createUserContext();
 
-    // Determine the type of query and provide personalized response
+    // Constants
+    const INCOME = 50000;
+    const SAVINGS = 100000;
+
+    // Helper: fetch latest saved goal from AI Goal Planner backend
+    const getLatestGoal = async () => {
+      try {
+        const r = await fetch('http://localhost:3002/api/goals');
+        if (!r.ok) return null;
+        const data = await r.json();
+        const arr = Array.isArray(data.goals) ? data.goals : [];
+        if (arr.length === 0) return null;
+        // assume latest is last
+        const g = arr[arr.length - 1];
+        return {
+          goal: g.goal || g.title || 'Goal',
+          amount: Number(g.amount) || 0,
+          duration: Number(g.duration) || 12,
+        };
+      } catch (_) { return null; }
+    };
+
+    // Helper: parse amount and months from free text
+    const parseNumber = (s) => {
+      const m = s.replace(/[,₹$]/g, '').match(/\d+(?:\.\d+)?/);
+      return m ? Math.round(Number(m[0])) : null;
+    };
+    const findAmount = () => parseNumber(input);
+    const findMonths = () => {
+      const mm = input.match(/(\d+)\s*(months|month|m)/);
+      return mm ? Number(mm[1]) : null;
+    };
+
+    // Local calculators
+    const feasibility = (amount) => (amount >= SAVINGS * 10 ? 'NOT FEASIBLE' : 'Feasible');
+    const monthlyRequired = (amount, months) => {
+      const remaining = Math.max(amount - SAVINGS, 0);
+      const m = Math.max(1, months || 12);
+      return Math.ceil(remaining / m);
+    };
+
+    // 1) Income question
+    if (/(what|whats|tell).*income/.test(input)) {
+      return `Your monthly income is ₹${INCOME.toLocaleString()}.`;
+    }
+    // 2) Savings question
+    if (/(what|whats|tell).*saving/.test(input)) {
+      return `Your current savings are ₹${SAVINGS.toLocaleString()}.`;
+    }
+
+    // 2.5) Market queries
+    if (/what'?s the market today|market today|nifty today|sensex today/.test(input)) {
+      try {
+        const r = await fetch(`${API_BASE}/api/market?q=nifty`);
+        const d = await r.json();
+        if (d?.price != null) {
+          const sign = d.change >= 0 ? '+' : '';
+          return `Nifty50: ${d.price} (${sign}${d.change.toFixed(2)}, ${sign}${d.changePercent.toFixed(2)}%). High ${d.dayHigh}, Low ${d.dayLow}.`;
+        }
+      } catch (_) {}
+      return 'Market data is temporarily unavailable.';
+    }
+    if (/price of |quote |stock /.test(input)) {
+      // try to extract a token symbol or company name
+      const m = input.match(/price of ([a-z0-9_.-]+)/) || input.match(/stock ([a-z0-9_.-]+)/) || input.match(/quote ([a-z0-9_.-]+)/);
+      const q = m ? m[1] : 'nifty';
+      try {
+        const r = await fetch(`${API_BASE}/api/market?q=${encodeURIComponent(q)}`);
+        const d = await r.json();
+        if (d?.price != null) {
+          const sign = d.change >= 0 ? '+' : '';
+          return `${d.shortName} (${d.symbol}): ${d.price} ${d.currency || ''} (${sign}${d.change.toFixed(2)}, ${sign}${d.changePercent.toFixed(2)}%).`;
+        }
+      } catch (_) {}
+      return `Couldn't fetch ${q} right now.`;
+    }
+
+    // 2.6) Simple stock recommendations based on savings (hard-coded)
+    if (
+      /(recommend|suggest).*stock/.test(input) ||
+      /(stock|investment) options/.test(input) ||
+      /(based on).*savings/.test(input) ||
+      /my savings.*invest/.test(input)
+    ) {
+      const base = 100000; // current savings constant
+      const alloc = [
+        { label: 'Emergency/Liquid fund', pct: 0.30 },
+        { label: 'Debt/Short-duration fund', pct: 0.20 },
+        { label: 'Nifty 50 Index fund/ETF', pct: 0.30 },
+        { label: 'Large-cap equities', pct: 0.15 },
+        { label: 'Cash buffer', pct: 0.05 },
+      ];
+      const lines = alloc.map(a => `- ${a.label}: ₹${Math.round(base * a.pct).toLocaleString()} (${Math.round(a.pct*100)}%)`).join('\n');
+      return `Based on savings of ₹${base.toLocaleString()}, here is a simple allocation:\n${lines}\nNote: move monthly contributions to the index fund first; keep 6 months expenses in emergency.`;
+    }
+    // 3) “Can I buy X” / feasibility
+    if (/can i (buy|get|afford)/.test(input)) {
+      const amt = findAmount();
+      if (!amt) return `Give me the amount and optional duration. Example: "Can I buy a car for ₹500000 in 18 months?"`;
+      const feas = feasibility(amt);
+      if (feas === 'NOT FEASIBLE') return `NOT FEASIBLE: ₹${amt.toLocaleString()} is ≥ 10× your savings (₹${SAVINGS.toLocaleString()}).`;
+      const months = findMonths() || 12;
+      const need = monthlyRequired(amt, months);
+      const effort = Math.round((need / INCOME) * 100);
+      return `Feasible with disciplined saving. Goal ₹${amt.toLocaleString()} in ${months} months → Save about ₹${need.toLocaleString()}/month (${effort}% of income).`;
+    }
+    // 4) “How much should I save” for goal
+    if (/how much.*save/.test(input)) {
+      let amt = findAmount();
+      let months = findMonths();
+      if (!amt) {
+        const last = await getLatestGoal();
+        if (last) { amt = last.amount; months = months || last.duration; }
+      }
+      if (!amt) return `Tell me the target amount (and optional months). Example: "How much should I save for ₹300000 in 10 months?"`;
+      const feas = feasibility(amt);
+      if (feas === 'NOT FEASIBLE') return `NOT FEASIBLE: target ₹${amt.toLocaleString()} is ≥ 10× your savings.`;
+      const m = months || 12;
+      const need = monthlyRequired(amt, m);
+      const effort = Math.round((need / INCOME) * 100);
+      const remaining = Math.max(amt - SAVINGS, 0).toLocaleString();
+      return `To reach ₹${amt.toLocaleString()} in ${m} months, save about ₹${need.toLocaleString()}/month (${effort}% of income). Remaining needed after savings: ₹${remaining}.`;
+    }
+
+    // Try backend AI first (Groq proxy)
+    try {
+      const resp = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userInput,
+          context: {
+            ...userContext,
+            monthly_income: 50000,
+            current_savings: 100000,
+          },
+        }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data?.reply) return data.reply;
+      }
+    } catch (_) {
+      // fall through to local heuristics
+    }
+
+    // Fallback: local rules
     if (
       input.includes("budget") ||
       input.includes("spending") ||
@@ -107,7 +252,7 @@ const Chatbot = () => {
       name: user?.firstName || "User",
       age: profile.age,
       occupation: profile.occupation,
-      monthlyIncome: budget.monthlyIncome || 0,
+      monthlyIncome: budget.monthlyIncome || 50000, // default fixed income
       monthlyExpenses: profile.monthlyExpenses || 0,
       riskTolerance: profile.riskTolerance || "moderate",
       investmentExperience: profile.investmentExperience || "beginner",
@@ -117,6 +262,7 @@ const Chatbot = () => {
       investmentGoals: profile.investmentGoals || [],
       financialGoals: goals,
       budgetCategories: budget.categories || [],
+      currentSavings: 100000,
     };
   };
 

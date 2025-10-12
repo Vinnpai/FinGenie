@@ -1,11 +1,12 @@
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
 import {
   getInvestmentRecommendations,
   getMarketTrends,
   getRetirementRecommendations,
 } from "../services/stockService";
+import { useLatestGoal } from "../hooks/useLatestGoal";
 
 const InvestmentAdvisor = () => {
   const { user } = useAuth();
@@ -18,6 +19,57 @@ const InvestmentAdvisor = () => {
   const [retirementRecommendations, setRetirementRecommendations] =
     useState(null);
   const [loading, setLoading] = useState(false);
+  const { latestGoal } = useLatestGoal();
+  const [movers, setMovers] = useState([]);
+  const [moversLoading, setMoversLoading] = useState(true);
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+  const INCOME = 50000;
+  const SAVINGS = 100000;
+
+  // Goal-aware computed values
+  const goalComputed = useMemo(() => {
+    if (!latestGoal?.amount || !latestGoal?.duration) return null;
+    const remaining = Math.max(Number(latestGoal.amount) - SAVINGS, 0);
+    const months = Math.max(1, Number(latestGoal.duration));
+    const monthly = Math.ceil(remaining / months);
+    const effort = Math.round((monthly / INCOME) * 100);
+    let bucket = 'good';
+    if (effort <= 15) bucket = 'nice';
+    else if (effort <= 25) bucket = 'good';
+    else if (effort <= 35) bucket = 'stretch';
+    else if (effort <= 50) bucket = 'tough';
+    else bucket = 'critical';
+    // simple allocation by bucket (percentages)
+    const alloc = bucket === 'nice'
+      ? [{n:'Index Fund',p:70},{n:'Debt/Short-term',p:20},{n:'Cash',p:10}]
+      : bucket === 'good'
+      ? [{n:'Index Fund',p:60},{n:'Debt/Short-term',p:25},{n:'Large-cap',p:15}]
+      : bucket === 'stretch'
+      ? [{n:'Index Fund',p:50},{n:'Debt/Short-term',p:35},{n:'Cash',p:15}]
+      : bucket === 'tough'
+      ? [{n:'Debt/Short-term',p:45},{n:'Index Fund',p:35},{n:'Cash',p:20}]
+      : [{n:'Debt/Short-term',p:55},{n:'Cash',p:25},{n:'Index Fund',p:20}];
+    return { monthly, effort, bucket, alloc };
+  }, [latestGoal]);
+
+  // Fetch Top Movers
+  useEffect(() => {
+    let timer;
+    const fetchTop = async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/market/top?n=5`);
+        const j = await r.json();
+        setMovers(Array.isArray(j.top) ? j.top : []);
+      } catch {
+        setMovers([]);
+      } finally {
+        setMoversLoading(false);
+      }
+    };
+    fetchTop();
+    timer = setInterval(fetchTop, 60000);
+    return () => clearInterval(timer);
+  }, [API_BASE]);
 
   const recommendations = {
     conservative: [
@@ -233,6 +285,47 @@ const InvestmentAdvisor = () => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.4 }}
         >
+          {/* Goal-Aware Plan */}
+          {latestGoal && goalComputed && (
+            <motion.div
+              className="bg-zinc-900/50 rounded-2xl border border-zinc-800 p-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45 }}
+            >
+              <h3 className="text-xl font-semibold text-white mb-2">🎯 Goal-Aware Plan</h3>
+              <p className="text-zinc-400 text-sm mb-4">Target “{latestGoal.goal}” · ₹{Number(latestGoal.amount).toLocaleString()} in {latestGoal.duration} months</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+                  <p className="text-xs text-zinc-400 mb-1">Monthly Required</p>
+                  <p className="text-2xl font-bold text-white">₹{goalComputed.monthly.toLocaleString()}</p>
+                </div>
+                <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+                  <p className="text-xs text-zinc-400 mb-1">Effort</p>
+                  <p className={`text-lg font-semibold ${goalComputed.effort<=25?'text-green-400':goalComputed.effort<=35?'text-yellow-400':goalComputed.effort<=50?'text-orange-400':'text-red-400'}`}>{goalComputed.effort}% of income</p>
+                </div>
+                <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+                  <p className="text-xs text-zinc-400 mb-1">Health</p>
+                  <p className="text-lg font-semibold text-zinc-200 capitalize">{goalComputed.bucket}</p>
+                </div>
+              </div>
+              <div className="mt-4">
+                <h4 className="text-white font-semibold mb-2">Suggested Allocation</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {goalComputed.alloc.map((a, i)=> (
+                    <div key={i} className="bg-zinc-800/40 rounded-lg p-3 border border-zinc-700">
+                      <div className="flex justify-between">
+                        <span className="text-zinc-300 text-sm">{a.n}</span>
+                        <span className="text-brand-400 font-semibold">{a.p}%</span>
+                      </div>
+                      <p className="text-zinc-400 text-xs mt-1">≈ ₹{Math.round(goalComputed.monthly * a.p/100).toLocaleString()} / mo</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {/* Personalized Recommendations */}
           {personalizedRecommendations && (
             <motion.div
@@ -269,6 +362,40 @@ const InvestmentAdvisor = () => {
               </p>
             </motion.div>
           )}
+
+          {/* Live Top Movers */}
+          <motion.div
+            className="bg-zinc-900/50 rounded-2xl border border-zinc-800 p-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55 }}
+          >
+            <h3 className="text-xl font-semibold text-white mb-4">🏅 Live Top Movers (NSE)</h3>
+            {moversLoading ? (
+              <p className="text-zinc-400 text-sm">Loading…</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-zinc-400">
+                      <th className="text-left pb-2">Symbol</th>
+                      <th className="text-right pb-2">Price</th>
+                      <th className="text-right pb-2">Change%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {movers.slice(0,5).map((m)=> (
+                      <tr key={m.symbol} className="border-t border-zinc-800">
+                        <td className="py-2 text-white">{m.shortName || m.symbol}</td>
+                        <td className="py-2 text-right text-zinc-200">{m.price}</td>
+                        <td className={`py-2 text-right ${m.change>=0?'text-green-400':'text-red-400'}`}>{(m.changePercent??0).toFixed(2)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </motion.div>
 
           {/* Market Trends */}
           {marketTrends && (

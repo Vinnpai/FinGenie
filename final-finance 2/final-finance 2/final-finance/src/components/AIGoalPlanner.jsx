@@ -1,14 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import GoalCard from './GoalCard';
 
 const AIGoalPlanner = () => {
+  // Fixed constants (auto-detected style)
+  const MONTHLY_INCOME = 50000;
+  const CURRENT_SAVINGS = 100000;
+  // Tiny jitter to feel live: 10–15% savings rate
+  const [savingsRate, setSavingsRate] = useState(0.12);
+
   const [formData, setFormData] = useState({
     goal: '',
     amount: '',
-    duration: '12',
-    income: '',
-    savings: ''
+    duration: '12'
   });
 
   const [plan, setPlan] = useState(null);
@@ -16,10 +20,15 @@ const AIGoalPlanner = () => {
   const [error, setError] = useState(null);
   const [savedGoals, setSavedGoals] = useState([]);
   const [loadingGoals, setLoadingGoals] = useState(true);
+  const monthlyAutoSavings = useMemo(() => Math.round(MONTHLY_INCOME * savingsRate), [MONTHLY_INCOME, savingsRate]);
 
   // Fetch saved goals on component mount
   useEffect(() => {
     fetchSavedGoals();
+    // randomize savings rate 10-15% on mount
+    const min = 10, max = 15;
+    const p = (Math.floor(Math.random() * (max - min + 1)) + min) / 100;
+    setSavingsRate(p);
   }, []);
 
   const fetchSavedGoals = async () => {
@@ -86,6 +95,13 @@ const AIGoalPlanner = () => {
     setLoading(true);
     setError(null);
     setPlan(null);
+    // Feasibility pre-check: if amount >= 10x current savings -> Not feasible
+    const amtCheck = Number(formData.amount);
+    if (amtCheck >= CURRENT_SAVINGS * 10) {
+      setPlan({ not_feasible: true, message: 'NOT FEASIBLE: Goal amount is 10x or more than current savings.' });
+      setLoading(false);
+      return;
+    }
 
     try {
       // Try to call the AI Goal Planner backend API
@@ -100,8 +116,8 @@ const AIGoalPlanner = () => {
             goal: formData.goal,
             amount: Number(formData.amount),
             duration: Number(formData.duration),
-            income: Number(formData.income),
-            savings: Number(formData.savings)
+            income: MONTHLY_INCOME,
+            savings: CURRENT_SAVINGS
           }),
         });
 
@@ -116,6 +132,15 @@ const AIGoalPlanner = () => {
             investment_strategy: data.investment_strategy,
             summary: data.summary
           });
+          // Persist latest goal locally for use across the app
+          try {
+            localStorage.setItem('latest_goal', JSON.stringify({
+              goal: formData.goal,
+              amount: Number(formData.amount),
+              duration: Number(formData.duration),
+              ts: Date.now()
+            }));
+          } catch {}
           // Refresh the saved goals list
           fetchSavedGoals();
           setLoading(false);
@@ -131,12 +156,12 @@ const AIGoalPlanner = () => {
       // Fallback: Generate plan locally if backend is not available
       const amount = Number(formData.amount);
       const duration = Number(formData.duration);
-      const income = Number(formData.income);
-      const savings = Number(formData.savings);
+      const income = MONTHLY_INCOME;
+      const savings = CURRENT_SAVINGS;
       
-      const remainingAmount = amount - savings;
-      const monthlySaving = Math.ceil(remainingAmount / duration);
-      const savingsRate = ((monthlySaving / income) * 100).toFixed(1);
+      const remainingAmount = Math.max(amount - savings, 0);
+      const monthlySaving = Math.ceil(remainingAmount / Math.max(duration, 1));
+      const savingsRatePct = ((monthlySaving / Math.max(income, 1)) * 100).toFixed(1);
       
       // Generate investment strategy based on duration and amount
       let strategy = '';
@@ -148,13 +173,22 @@ const AIGoalPlanner = () => {
         strategy = `With ${duration} months to achieve your goal, you can take advantage of long-term growth. Allocate 60% to diversified equity mutual funds, 25% to index funds, and 15% to debt instruments. Expected returns: 12-15% annually.`;
       }
       
-      const summary = `To reach your goal of "${formData.goal}" worth $${amount.toLocaleString()}, you need to save $${monthlySaving} per month (${savingsRate}% of your income). ${savings > 0 ? `With your current savings of $${savings}, you need to accumulate $${remainingAmount.toLocaleString()} more.` : ''} ${monthlySaving / income > 0.3 ? 'This is an aggressive savings target. Consider extending the timeline or increasing your income.' : 'This savings rate is achievable with disciplined budgeting.'} Focus on automating your savings and tracking progress monthly.`;
+      const summary = `Monthly income: ₹${income.toLocaleString()} (auto). Current savings: ₹${savings.toLocaleString()} (auto). To reach "${formData.goal}" worth ₹${amount.toLocaleString()} in ${duration} months, you need to save about ₹${monthlySaving.toLocaleString()}/month (${savingsRatePct}% of income). Remaining needed: ₹${remainingAmount.toLocaleString()}. ${monthlySaving / income > 0.3 ? 'This target is aggressive — consider extending the duration.' : 'This looks feasible with disciplined budgeting.'}`;
       
       setPlan({
         monthly_saving: monthlySaving,
         investment_strategy: strategy,
         summary: summary
       });
+      // Persist latest goal locally
+      try {
+        localStorage.setItem('latest_goal', JSON.stringify({
+          goal: formData.goal,
+          amount: Number(formData.amount),
+          duration: Number(formData.duration),
+          ts: Date.now()
+        }));
+      } catch {}
     } catch (err) {
       setError(err.message || 'An error occurred');
     } finally {
@@ -180,6 +214,23 @@ const AIGoalPlanner = () => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
         >
+          {/* Read-only auto-detected cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-zinc-900/40 rounded-xl border border-zinc-800 p-4">
+              <p className="text-zinc-400 text-sm">Monthly Income (auto)</p>
+              <p className="text-2xl font-bold text-white">₹{MONTHLY_INCOME.toLocaleString()}</p>
+            </div>
+            <div className="bg-zinc-900/40 rounded-xl border border-zinc-800 p-4">
+              <p className="text-zinc-400 text-sm">Current Savings (auto)</p>
+              <p className="text-2xl font-bold text-white">₹{CURRENT_SAVINGS.toLocaleString()}</p>
+            </div>
+            <div className="bg-zinc-900/40 rounded-xl border border-zinc-800 p-4">
+              <p className="text-zinc-400 text-sm">Auto Monthly Savings</p>
+              <p className="text-2xl font-bold text-emerald-400">₹{monthlyAutoSavings.toLocaleString()}</p>
+              <p className="text-xs text-zinc-500 mt-1">{Math.round(savingsRate * 100)}% of income</p>
+            </div>
+          </div>
+
           <h3 className="text-xl font-semibold text-white mb-6">Your Financial Goal</h3>
           
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -200,7 +251,7 @@ const AIGoalPlanner = () => {
 
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-2">
-                Target Amount ($)
+                Target Amount (₹)
               </label>
               <input
                 type="number"
@@ -228,37 +279,6 @@ const AIGoalPlanner = () => {
                 required
                 min="1"
                 max="120"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
-                Monthly Income ($)
-              </label>
-              <input
-                type="number"
-                name="income"
-                value={formData.income}
-                onChange={handleInputChange}
-                placeholder="4000"
-                className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-                required
-                min="1"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
-                Current Savings ($) - Optional
-              </label>
-              <input
-                type="number"
-                name="savings"
-                value={formData.savings}
-                onChange={handleInputChange}
-                placeholder="1000"
-                className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-                min="0"
               />
             </div>
 
@@ -299,42 +319,55 @@ const AIGoalPlanner = () => {
 
           {plan ? (
             <div className="space-y-5 animate-fadeIn">
-              <div className="bg-gradient-to-r from-brand-600 to-pink-500 text-white p-6 rounded-lg shadow-md">
-                <h4 className="text-lg font-semibold mb-2">💰 Monthly Saving Required</h4>
-                <p className="text-4xl font-bold">${plan.monthly_saving?.toLocaleString()}</p>
-              </div>
+              {plan.not_feasible ? (
+                <div className="bg-red-600/20 text-red-300 p-6 rounded-lg border border-red-600/40">
+                  <h4 className="text-lg font-semibold mb-2">⚠️ NOT FEASIBLE</h4>
+                  <p className="text-sm">{plan.message}</p>
+                </div>
+              ) : (
+                <div className="bg-gradient-to-r from-brand-600 to-pink-500 text-white p-6 rounded-lg shadow-md">
+                  <h4 className="text-lg font-semibold mb-2">💰 Monthly Saving Required</h4>
+                  <p className="text-4xl font-bold">₹{plan.monthly_saving?.toLocaleString()}</p>
+                </div>
+              )}
 
-              <div className="bg-brand-500/10 p-5 rounded-lg border border-brand-500/30">
-                <h4 className="text-base font-semibold text-white mb-2">📈 Investment Strategy</h4>
-                <p className="text-zinc-300 text-sm leading-relaxed">{plan.investment_strategy}</p>
-              </div>
+              {!plan.not_feasible && (
+                <div className="bg-brand-500/10 p-5 rounded-lg border border-brand-500/30">
+                  <h4 className="text-base font-semibold text-white mb-2">📈 Investment Strategy</h4>
+                  <p className="text-zinc-300 text-sm leading-relaxed">{plan.investment_strategy}</p>
+                </div>
+              )}
 
-              <div className="bg-zinc-800/50 p-5 rounded-lg border border-zinc-700">
-                <h4 className="text-base font-semibold text-white mb-2">🤖 AI Summary</h4>
-                <p className="text-zinc-300 text-sm leading-relaxed">{plan.summary}</p>
-              </div>
+              {!plan.not_feasible && (
+                <div className="bg-zinc-800/50 p-5 rounded-lg border border-zinc-700">
+                  <h4 className="text-base font-semibold text-white mb-2">🤖 AI Summary</h4>
+                  <p className="text-zinc-300 text-sm leading-relaxed">{plan.summary}</p>
+                </div>
+              )}
 
-              <div className="bg-gradient-to-br from-zinc-800 to-zinc-900 text-white p-5 rounded-lg shadow-md border border-zinc-700">
-                <h4 className="text-base font-semibold mb-3">✨ Key Insights</h4>
-                <ul className="space-y-2 text-sm">
-                  <li className="flex items-start">
-                    <span className="text-brand-400 mr-2">•</span>
-                    <span>Save ${plan.monthly_saving?.toLocaleString()} every month</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-brand-400 mr-2">•</span>
-                    <span>Total savings: ${(plan.monthly_saving * formData.duration).toLocaleString()}</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-brand-400 mr-2">•</span>
-                    <span>Investment growth potential included</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-brand-400 mr-2">•</span>
-                    <span>Personalized to your income level</span>
-                  </li>
-                </ul>
-              </div>
+              {!plan.not_feasible && (
+                <div className="bg-gradient-to-br from-zinc-800 to-zinc-900 text-white p-5 rounded-lg shadow-md border border-zinc-700">
+                  <h4 className="text-base font-semibold mb-3">✨ Key Insights</h4>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start">
+                      <span className="text-brand-400 mr-2">•</span>
+                      <span>Save ₹{plan.monthly_saving?.toLocaleString()} every month</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-brand-400 mr-2">•</span>
+                      <span>Total savings: ₹{(plan.monthly_saving * formData.duration).toLocaleString()}</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-brand-400 mr-2">•</span>
+                      <span>Investment growth potential included</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-brand-400 mr-2">•</span>
+                      <span>Personalized to detected income</span>
+                    </li>
+                  </ul>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center text-zinc-400 py-12">

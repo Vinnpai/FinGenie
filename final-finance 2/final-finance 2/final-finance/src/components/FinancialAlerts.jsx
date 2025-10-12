@@ -1,38 +1,82 @@
 import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
 
 const FinancialAlerts = () => {
-  const alerts = [
-    {
-      type: 'warning',
-      icon: '⚠',
-      color: 'yellow',
-      message: "High Spending Alert: 'Dining Out' is 40% over budget this month."
-    },
-    {
-      type: 'info',
-      icon: 'ℹ',
-      color: 'blue',
-      message: 'Bill Reminder: Netflix payment of $15.99 is due in 3 days.'
-    },
-    {
-      type: 'success',
-      icon: '✅',
-      color: 'green',
-      message: "You're on track to meet your 'Vacation Fund' savings goal!"
-    },
-    {
-      type: 'warning',
-      icon: '📊',
-      color: 'orange',
-      message: 'Your credit card utilization is at 75%. Consider paying down the balance.'
-    },
-    {
-      type: 'info',
-      icon: '💡',
-      color: 'purple',
-      message: 'Tip: You could save $120/month by reducing shopping expenses by 20%.'
+  // Constants used across the app
+  const INCOME = 50000;
+  const SAVINGS = 100000;
+
+  const [alerts, setAlerts] = useState([]);
+
+  useEffect(() => {
+    const next = [];
+    // Pull latest goal stored by AIGoalPlanner
+    let latestGoal = null;
+    try {
+      const raw = localStorage.getItem('latest_goal');
+      latestGoal = raw ? JSON.parse(raw) : null;
+    } catch {}
+
+    if (latestGoal && latestGoal.amount && latestGoal.duration) {
+      const remaining = Math.max(Number(latestGoal.amount) - SAVINGS, 0);
+      const months = Math.max(1, Number(latestGoal.duration));
+      const monthly = Math.ceil(remaining / months);
+      const effort = Math.round((monthly / INCOME) * 100); // % of income
+
+      // Bucketed guidance based on effort percentage
+      // <=15% Nice, 16-25% Good, 26-35% Stretch, 36-50% Tough, >50% Critical
+      if (effort <= 15) {
+        next.push({
+          type: 'success', icon: '🎉', color: 'green',
+          message: `All good! You’re on track. Saving about ₹${monthly.toLocaleString()}/mo keeps “${latestGoal.goal}” comfy. Nice!`
+        });
+      } else if (effort <= 25) {
+        next.push({
+          type: 'info', icon: '💪', color: 'blue',
+          message: `Solid plan. Save ~₹${monthly.toLocaleString()}/mo (${effort}% of income) to hit “${latestGoal.goal}”. Keep it rolling!`
+        });
+      } else if (effort <= 35) {
+        next.push({
+          type: 'warning', icon: '⚖️', color: 'yellow',
+          message: `Stretch zone: ₹${monthly.toLocaleString()}/mo (${effort}%). Trim a few extras or add 3 months for breathing room.`
+        });
+      } else if (effort <= 50) {
+        next.push({
+          type: 'warning', icon: '🔥', color: 'orange',
+          message: `Tough but doable: ₹${monthly.toLocaleString()}/mo (${effort}%). Consider extending by 6 months or boosting income.`
+        });
+      } else {
+        next.push({
+          type: 'error', icon: '⛔', color: 'red',
+          message: `Critical: Needs ₹${monthly.toLocaleString()}/mo (${effort}%). Try a longer duration or lower target before proceeding.`
+        });
+      }
+
+      // Not feasible flag (10x savings rule)
+      if (Number(latestGoal.amount) >= SAVINGS * 10) {
+        next.unshift({
+          type: 'error', icon: '🚧', color: 'red',
+          message: `Not feasible right now: goal is ≥ 10× current savings. Reduce target or extend duration.`
+        });
+      }
+
+      // Fun “if this then that” nudge when effort > 25%
+      if (effort > 25) {
+        next.push({
+          type: 'info', icon: '🧠', color: 'purple',
+          message: `If you order takeout twice less this week, “${latestGoal.goal}” gets there faster by ₹1,000+.`
+        });
+      }
+    } else {
+      // No goal yet: friendly prompt
+      next.push({
+        type: 'info', icon: '✨', color: 'blue',
+        message: 'Set a goal in AI Goal Planner to unlock smart alerts tailored to you.'
+      });
     }
-  ];
+
+    setAlerts(next);
+  }, []);
 
   return (
     <div className="space-y-8">

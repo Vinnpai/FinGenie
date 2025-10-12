@@ -9,7 +9,6 @@ import SpendAnalyzer from "./components/SpendAnalyzer";
 import AIGoalPlanner from "./components/AIGoalPlanner";
 import FinancialAlerts from "./components/FinancialAlerts";
 import InvestmentAdvisor from "./components/InvestmentAdvisor";
-import ExpenseAnalyzer from "./components/ExpenseAnalyzer";
 import { userAPI } from "./services/api";
 
 // --- Helper Icons (as React Components) ---
@@ -169,7 +168,6 @@ function Dashboard() {
   const navItems = [
     { name: "Dashboard", icon: <DashboardIcon /> },
     { name: "Spend Analyzer", icon: <SpendIcon /> },
-    { name: "Expense Analyzer", icon: <ExpenseIcon /> },
     { name: "AI Goal Planner", icon: <GoalIcon /> },
     { name: "Financial Alerts", icon: <AlertIcon />, badge: "3" },
     { name: "Investment Advisor", icon: <InvestIcon /> },
@@ -181,8 +179,7 @@ function Dashboard() {
         return <DashboardOverview />;
       case "Spend Analyzer":
         return <SpendAnalyzer />;
-      case "Expense Analyzer":
-        return <ExpenseAnalyzer />;
+      
       case "AI Goal Planner":
         return <AIGoalPlanner />;
       case "Financial Alerts":

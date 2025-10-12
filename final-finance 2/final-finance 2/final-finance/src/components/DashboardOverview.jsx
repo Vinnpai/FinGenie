@@ -1,14 +1,45 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 
 const DashboardOverview = () => {
   const [savedGoals, setSavedGoals] = useState([]);
   const [loadingGoals, setLoadingGoals] = useState(true);
+  // Spend (from sandbox) for reuse across dashboard
+  const SANDBOX_URL = 'http://localhost:8000/messages';
+  const CATEGORY_COLORS = {
+    Food: '#8b5cf6',
+    Bills: '#a855f7',
+    Transport: '#d946ef',
+    Shopping: '#f43f5e',
+    Entertainment: '#ec4899',
+    Other: '#8884d8',
+  };
+  const [transactions, setTransactions] = useState([]);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [spendError, setSpendError] = useState(null);
+  // Total Savings model
+  const MONTHLY_INCOME = 50000; // fixed for demo
+  const [savingsBase, setSavingsBase] = useState(null); // initialized > totalSpent on first load
 
   // Fetch saved goals for statistics
   useEffect(() => {
     fetchSavedGoals();
+    // Also fetch sandbox spend and keep it "live"
+    const fetchSpend = async () => {
+      try {
+        const res = await fetch(SANDBOX_URL);
+        const data = await res.json();
+        setTransactions(Array.isArray(data) ? data : []);
+        setLastUpdated(new Date());
+        setSpendError(null);
+      } catch (e) {
+        setSpendError('Failed to load spend data');
+      }
+    };
+    fetchSpend();
+    const id = setInterval(fetchSpend, 5000);
+    return () => clearInterval(id);
   }, []);
 
   const fetchSavedGoals = async () => {
@@ -32,16 +63,46 @@ const DashboardOverview = () => {
   const totalMonthlyRequired = savedGoals.reduce((sum, goal) => sum + (goal.plan?.monthly_saving || 0), 0);
   const completionPercentage = totalTargetAmount > 0 ? ((totalSaved / totalTargetAmount) * 100).toFixed(1) : 0;
 
-  // Spend Analyzer Data
-  const spendData = [
-    { name: 'Groceries', value: 400, color: '#8b5cf6' },
-    { name: 'Utilities', value: 300, color: '#a855f7' },
-    { name: 'Transport', value: 300, color: '#d946ef' },
-    { name: 'Dining Out', value: 200, color: '#ec4899' },
-    { name: 'Shopping', value: 500, color: '#f43f5e' },
-  ];
+  // Spend Analyzer Data (derived from sandbox transactions)
+  const spendData = useMemo(() => {
+    const totals = {};
+    for (const tx of transactions) {
+      const cat = tx?.category || 'Other';
+      const amt = Number(tx?.amount || 0);
+      totals[cat] = (totals[cat] || 0) + amt;
+    }
+    const entries = Object.entries(totals);
+    if (entries.length === 0) {
+      return [
+        { name: 'Food', value: 0, color: CATEGORY_COLORS.Food },
+        { name: 'Bills', value: 0, color: CATEGORY_COLORS.Bills },
+        { name: 'Transport', value: 0, color: CATEGORY_COLORS.Transport },
+        { name: 'Shopping', value: 0, color: CATEGORY_COLORS.Shopping },
+        { name: 'Entertainment', value: 0, color: CATEGORY_COLORS.Entertainment },
+      ];
+    }
+    return entries.map(([name, value]) => ({ name, value, color: CATEGORY_COLORS[name] || CATEGORY_COLORS.Other }));
+  }, [transactions]);
 
-  const totalSpent = spendData.reduce((sum, item) => sum + item.value, 0);
+  const totalSpent = useMemo(
+    () => transactions.reduce((sum, tx) => sum + (Number(tx?.amount || 0)), 0),
+    [transactions]
+  );
+
+  // Initialize savings base the first time after we have a totalSpent value
+  useEffect(() => {
+    if (savingsBase === null) {
+      // Ensure base is greater than current totalSpent
+      const base = Math.max(100000, totalSpent + 10000);
+      setSavingsBase(base);
+    }
+  }, [totalSpent, savingsBase]);
+
+  const totalSavings = useMemo(() => {
+    const base = savingsBase ?? 100000;
+    const surplus = Math.max(MONTHLY_INCOME - totalSpent, 0);
+    return base + surplus;
+  }, [savingsBase, totalSpent]);
 
   // Monthly comparison data for bar chart
   const monthlyData = [
@@ -53,25 +114,32 @@ const DashboardOverview = () => {
     { month: 'Jun', spent: 1500, budget: 1500 },
   ];
 
-  // Heatmap data (activity tracker)
-  const generateHeatmapData = () => {
-    const weeks = 12;
-    const daysPerWeek = 7;
+  // Heatmap data (activity tracker) - visually dynamic with gentle color updates
+  const weeks = 12;
+  const daysPerWeek = 7;
+  const [heatmapData, setHeatmapData] = useState(() => {
     const data = [];
-    
     for (let week = 0; week < weeks; week++) {
       for (let day = 0; day < daysPerWeek; day++) {
-        data.push({
-          week,
-          day,
-          value: Math.floor(Math.random() * 5), // 0-4 intensity
-        });
+        data.push({ week, day, value: Math.floor(Math.random() * 5) });
       }
     }
     return data;
-  };
-
-  const heatmapData = generateHeatmapData();
+  });
+  useEffect(() => {
+    const id = setInterval(() => {
+      setHeatmapData((prev) => {
+        // mutate a few random cells to new intensities to simulate activity
+        const next = [...prev];
+        for (let i = 0; i < 10; i++) {
+          const idx = Math.floor(Math.random() * next.length);
+          next[idx] = { ...next[idx], value: Math.floor(Math.random() * 5) };
+        }
+        return next;
+      });
+    }, 1500);
+    return () => clearInterval(id);
+  }, []);
   const getHeatmapColor = (value) => {
     const colors = ['#18181b', '#3f3f46', '#8b5cf6', '#a855f7', '#d946ef'];
     return colors[value] || colors[0];
@@ -101,15 +169,18 @@ const DashboardOverview = () => {
               <div key={weekIndex} className="flex flex-col gap-1">
                 {Array.from({ length: 7 }).map((_, dayIndex) => {
                   const dataPoint = heatmapData.find(d => d.week === weekIndex && d.day === dayIndex);
+                  const val = dataPoint?.value || 0;
                   return (
                     <motion.div
                       key={`${weekIndex}-${dayIndex}`}
                       className="w-4 h-4 rounded-sm cursor-pointer hover:ring-2 hover:ring-brand-500"
-                      style={{ backgroundColor: getHeatmapColor(dataPoint?.value || 0) }}
                       initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ delay: (weekIndex * 7 + dayIndex) * 0.005 }}
-                      title={`Week ${weekIndex + 1}, Day ${dayIndex + 1}: ${dataPoint?.value || 0} activities`}
+                      animate={{
+                        scale: 1,
+                        backgroundColor: getHeatmapColor(val),
+                      }}
+                      transition={{ delay: (weekIndex * 7 + dayIndex) * 0.005, duration: 0.8 }}
+                      title={`Week ${weekIndex + 1}, Day ${dayIndex + 1}: ${val} activities`}
                     />
                   );
                 })}
@@ -141,8 +212,8 @@ const DashboardOverview = () => {
             <span className="text-sm opacity-90">Total Spent</span>
             <span className="text-2xl">💸</span>
           </div>
-          <p className="text-3xl font-bold">${totalSpent.toLocaleString()}</p>
-          <p className="text-xs opacity-75 mt-2">This month</p>
+          <p className="text-3xl font-bold">₹{totalSpent.toLocaleString()}</p>
+          <p className="text-xs opacity-75 mt-2">Live from sandbox{lastUpdated ? ` • Updated ${lastUpdated.toLocaleTimeString()}` : ''}</p>
         </motion.div>
 
         <motion.div
@@ -166,11 +237,11 @@ const DashboardOverview = () => {
           transition={{ delay: 0.4 }}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm opacity-90">Total Saved</span>
+            <span className="text-sm opacity-90">Total Savings</span>
             <span className="text-2xl">💰</span>
           </div>
-          <p className="text-3xl font-bold">${totalSaved.toLocaleString()}</p>
-          <p className="text-xs opacity-75 mt-2">Across all goals</p>
+          <p className="text-3xl font-bold">₹{totalSavings.toLocaleString()}</p>
+          <p className="text-xs opacity-75 mt-2">Base set above spend • Live with sandbox</p>
         </motion.div>
 
         <motion.div
