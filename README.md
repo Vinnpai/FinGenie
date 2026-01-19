@@ -11,16 +11,28 @@
 [![Node.js](https://img.shields.io/badge/Node.js-18.0+-339933?logo=node.js)](https://nodejs.org/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-7.0-47A248?logo=mongodb)](https://www.mongodb.com/)
 
-**[🎥 Watch Demo Video](---Click on the image to view the video:)
-
-[![FinGenie Quick Demo](https://img.youtube.com/vi/jt-z1ugr1FA/0.jpg)](https://youtu.be/jt-z1ugr1FA)
-
-
----)** | **[🚀 Quick Start](#-quick-start)** | **[📖 Documentation](#-documentation)**
-
 </div>
 
 ---
+
+## 🎥 Demo Preview (2× Speed – ~2 min)
+
+[![FinGenie Quick Demo](https://img.youtube.com/vi/jt-z1ugr1FA/0.jpg)](https://youtu.be/jt-z1ugr1FA)
+
+The demo video showcases:
+- User registration and profile setup
+- Real-time expense analyzer with live transactions
+- AI chatbot interactions
+- Goal planning and tracking
+- Investment advisor recommendations
+- Interactive charts and visualizations
+
+---
+
+## 🚀 Quick Start | 📖 Documentation
+
+- **[Quick Start](#-installation)**
+- **[Documentation](#-api-documentation)**
 
 ## 📋 Table of Contents
 
