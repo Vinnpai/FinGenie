@@ -11,7 +11,12 @@
 [![Node.js](https://img.shields.io/badge/Node.js-18.0+-339933?logo=node.js)](https://nodejs.org/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-7.0-47A248?logo=mongodb)](https://www.mongodb.com/)
 
-**[🎥 Watch Demo Video](#-demo-video)** | **[🚀 Quick Start](#-quick-start)** | **[📖 Documentation](#-documentation)**
+**[🎥 Watch Demo Video](---
+
+[![FinGenie Quick Demo](https://img.youtube.com/vi/jt-z1ugr1FA/0.jpg)](https://youtu.be/jt-z1ugr1FA)
+
+
+---)** | **[🚀 Quick Start](#-quick-start)** | **[📖 Documentation](#-documentation)**
 
 </div>
 
@@ -46,6 +51,21 @@
 - 💰 **PiggyBank Tracking**: Monitor actual vs estimated savings in real-time
 - 📈 **Investment Advisor**: Personalized investment recommendations based on risk profile
 - 🔔 **Financial Alerts**: Proactive notifications for budget overspending and bill reminders
+
+---
+
+## 🎥 Demo Preview
+[![FinGenie Quick Demo](https://img.youtube.com/vi/jt-z1ugr1FA/0.jpg)](https://youtu.be/jt-z1ugr1FA)
+
+
+The demo video showcases:
+- User registration and profile setup
+- Real-time expense analyzer with live transactions
+- AI chatbot interactions
+- Goal planning and tracking
+- Investment advisor recommendations
+- Interactive charts and visualizations
+
 
 ---
 
@@ -406,48 +426,9 @@ curl -X POST http://localhost:5001/api/expense/budget \
   }'
 ```
 
----
 
-## 🎥 Demo Video
+Built at Udgama Hackathon
 
-> **📹 [Watch the Demo Video](https://your-video-link-here)** *(Add your GitHub video link here)*
-
-The demo video showcases:
-- User registration and profile setup
-- Real-time expense analyzer with live transactions
-- AI chatbot interactions
-- Goal planning and tracking
-- Investment advisor recommendations
-- Interactive charts and visualizations
-
----
-
-## 📸 Screenshots
-
-### Dashboard Overview
-![Dashboard](screenshots/dashboard.png)
-
-### Expense Analyzer
-![Expense Analyzer](screenshots/expense-analyzer.png)
-
-### AI Chatbot
-![AI Chatbot](screenshots/chatbot.png)
-
-### Investment Advisor
-![Investment Advisor](screenshots/investment-advisor.png)
-
-> *Add your screenshots to a `screenshots/` folder and update the paths above*
-
----
-
-## 👥 Team
-
-**Team 6 - Built at Udgama Hackathon**
-
-- [Team Member 1](https://github.com/username1) - Role
-- [Team Member 2](https://github.com/username2) - Role
-- [Team Member 3](https://github.com/username3) - Role
-- [Team Member 4](https://github.com/username4) - Role
 
 ---
 
