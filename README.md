@@ -11,7 +11,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-18.0+-339933?logo=node.js)](https://nodejs.org/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-7.0-47A248?logo=mongodb)](https://www.mongodb.com/)
 
-**[🎥 Watch Demo Video](---
+**[🎥 Watch Demo Video](---Click on the image to view the video:)
 
 [![FinGenie Quick Demo](https://img.youtube.com/vi/jt-z1ugr1FA/0.jpg)](https://youtu.be/jt-z1ugr1FA)
 
