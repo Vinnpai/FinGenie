@@ -26,10 +26,25 @@ const ProgressBar = ({ current, target, label }) => {
 };
 
 const GoalCard = ({ goal, onDelete, onUpdateProgress }) => {
+  // Handle both old format (goal.goal) and new format (goal.title)
+  const goalTitle = goal.goal || goal.title || 'Untitled Goal';
+  const goalAmount = goal.amount || goal.targetAmount || 0;
+  const currentSaved = goal.progress?.currentSaved || goal.savings || goal.currentAmount || 0;
+  const createdAt = goal.createdAt || new Date().toISOString();
+  
+  // Calculate duration from deadline if available
+  let duration = goal.duration;
+  if (!duration && goal.deadline) {
+    const deadlineDate = new Date(goal.deadline);
+    const now = new Date();
+    const monthsDiff = Math.ceil((deadlineDate - now) / (1000 * 60 * 60 * 24 * 30));
+    duration = Math.max(1, monthsDiff);
+  }
+  duration = duration || 12;
+  
   const monthsElapsed = Math.floor(
-    (Date.now() - new Date(goal.createdAt).getTime()) / (1000 * 60 * 60 * 24 * 30)
+    (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24 * 30)
   );
-  const currentSaved = goal.progress?.currentSaved || goal.savings || 0;
   
   return (
     <motion.div
@@ -40,9 +55,9 @@ const GoalCard = ({ goal, onDelete, onUpdateProgress }) => {
     >
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="text-xl font-bold text-white mb-1">{goal.goal}</h3>
+          <h3 className="text-xl font-bold text-white mb-1">{goalTitle}</h3>
           <p className="text-sm text-zinc-400">
-            Created {new Date(goal.createdAt).toLocaleDateString()}
+            Created {new Date(createdAt).toLocaleDateString()}
           </p>
         </div>
         {onDelete && (
@@ -61,7 +76,7 @@ const GoalCard = ({ goal, onDelete, onUpdateProgress }) => {
       <div className="mb-4">
         <ProgressBar
           current={currentSaved}
-          target={goal.amount}
+          target={goalAmount}
           label="Progress"
         />
       </div>
@@ -76,7 +91,7 @@ const GoalCard = ({ goal, onDelete, onUpdateProgress }) => {
         <div className="bg-zinc-800/50 p-3 rounded-lg border border-zinc-700">
           <p className="text-xs text-zinc-400 mb-1">Duration</p>
           <p className="text-lg font-bold text-white">
-            {goal.duration} months
+            {duration} months
           </p>
         </div>
       </div>

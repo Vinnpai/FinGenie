@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import GoalCard from './GoalCard';
+import { financeAPI } from '../services/api.js';
 
 const AIGoalPlanner = () => {
   // Fixed constants (auto-detected style)
@@ -33,14 +34,12 @@ const AIGoalPlanner = () => {
 
   const fetchSavedGoals = async () => {
     try {
-      const response = await fetch('http://localhost:3002/api/goals');
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Fetched goals:', data);
-        setSavedGoals(data.goals || []);
-      }
+      const goals = await financeAPI.getGoals();
+      console.log('Fetched goals:', goals);
+      setSavedGoals(Array.isArray(goals) ? goals : []);
     } catch (error) {
       console.log('Could not fetch saved goals:', error);
+      setSavedGoals([]);
     } finally {
       setLoadingGoals(false);
     }
@@ -48,15 +47,14 @@ const AIGoalPlanner = () => {
 
   const handleUpdateProgress = async (goalId, amount) => {
     try {
-      const response = await fetch(`http://localhost:3002/api/goals/${goalId}/progress`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ amount }),
-      });
-      
-      if (response.ok) {
+      const goal = savedGoals.find(g => g._id === goalId);
+      if (goal) {
+        await financeAPI.updateGoal(goalId, {
+          currentAmount: amount,
+          title: goal.title,
+          targetAmount: goal.targetAmount,
+          deadline: goal.deadline
+        });
         console.log('Progress updated successfully');
         fetchSavedGoals(); // Refresh goals
       }
@@ -68,14 +66,9 @@ const AIGoalPlanner = () => {
   const handleDeleteGoal = async (goalId) => {
     if (window.confirm('Are you sure you want to delete this goal?')) {
       try {
-        const response = await fetch(`http://localhost:3002/api/goals/${goalId}`, {
-          method: 'DELETE',
-        });
-        
-        if (response.ok) {
-          console.log('Goal deleted successfully');
-          fetchSavedGoals(); // Refresh goals
-        }
+        await financeAPI.deleteGoal(goalId);
+        console.log('Goal deleted successfully');
+        fetchSavedGoals(); // Refresh goals
       } catch (error) {
         console.error('Failed to delete goal:', error);
       }
@@ -104,56 +97,7 @@ const AIGoalPlanner = () => {
     }
 
     try {
-      // Try to call the AI Goal Planner backend API
-      try {
-        console.log('Calling AI backend at http://localhost:3002/api/goals');
-        const response = await fetch('http://localhost:3002/api/goals', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            goal: formData.goal,
-            amount: Number(formData.amount),
-            duration: Number(formData.duration),
-            income: MONTHLY_INCOME,
-            savings: CURRENT_SAVINGS
-          }),
-        });
-
-        console.log('Response status:', response.status);
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('✅ AI Backend Response:', data);
-          // The backend returns plan data directly in the response
-          setPlan({
-            monthly_saving: data.monthly_saving,
-            investment_strategy: data.investment_strategy,
-            summary: data.summary
-          });
-          // Persist latest goal locally for use across the app
-          try {
-            localStorage.setItem('latest_goal', JSON.stringify({
-              goal: formData.goal,
-              amount: Number(formData.amount),
-              duration: Number(formData.duration),
-              ts: Date.now()
-            }));
-          } catch {}
-          // Refresh the saved goals list
-          fetchSavedGoals();
-          setLoading(false);
-          return;
-        } else {
-          const errorData = await response.json();
-          console.error('Backend error:', errorData);
-        }
-      } catch (apiError) {
-        console.log('⚠️ AI backend not available, using local calculation:', apiError.message);
-      }
-
-      // Fallback: Generate plan locally if backend is not available
+      // Generate plan locally (AI calculation)
       const amount = Number(formData.amount);
       const duration = Number(formData.duration);
       const income = MONTHLY_INCOME;
@@ -189,6 +133,28 @@ const AIGoalPlanner = () => {
           ts: Date.now()
         }));
       } catch {}
+
+      // Optionally save goal to backend if user is logged in
+      try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (user && user.token) {
+          // Calculate deadline date from duration
+          const deadline = new Date();
+          deadline.setMonth(deadline.getMonth() + Number(formData.duration));
+          
+          await financeAPI.addGoal({
+            title: formData.goal,
+            targetAmount: Number(formData.amount),
+            currentAmount: 0,
+            deadline: deadline.toISOString()
+          });
+          console.log('Goal saved to backend');
+          fetchSavedGoals(); // Refresh goals list
+        }
+      } catch (saveError) {
+        console.log('Could not save goal to backend (not logged in or error):', saveError);
+        // Continue anyway - goal plan is still shown
+      }
     } catch (err) {
       setError(err.message || 'An error occurred');
     } finally {
